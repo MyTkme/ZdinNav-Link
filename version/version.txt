@@ -1,0 +1,3 @@
+zdinnav amd64: 0.0.3-beta
+zdinnav arm: 0.0.3-beta
+zdinnav arm64: 0.0.3-beta
