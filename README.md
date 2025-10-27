@@ -11,13 +11,17 @@
 
 效果图：
 
-![pc登录预览](preview%20image/pc登录预览.png)
+|          电脑端显示效果：        |
+| --------------- |
+| <img src="preview%20image/pc登录预览.png" alt="pc登录预览" style="max-width:1000px;" /> |
+|     <img src="preview%20image/pc注册预览.png" alt="pc注册预览" style="max-width:1000px;" />             |
+|       <img src="preview%20image/pc首页预览.png" alt="pc首页预览" style="max-width:1000px;" />           |
+|         <img src="preview%20image/pc仓库共享书签查找.png" alt="pc仓库共享书签查找" style="max-width:1000px;" />         |
 
-
-
-
-
-
+| 移动端显示效果：                                             |                                                              |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| <img src="preview%20image/手机登录预览.png" alt="手机登录预览" style="max-width:300px;" /> | <img src="preview%20image/手机注册预览.png" alt="手机注册预览" style="max-width:300px;" /> |
+| <img src="preview%20image/手机首页预览.png" alt="手机首页预览" style="max-width:300px;" /> | <img src="preview%20image/手机仓库共享书签查找.png" alt="手机仓库共享书签查找" style="max-width:300px;" /> |
 
 安装教程：
 
