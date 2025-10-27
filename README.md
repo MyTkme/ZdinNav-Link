@@ -11,7 +11,7 @@
 
 效果图：
 
-![pc登录预览](../preview image/pc登录预览.png)
+![pc登录预览](preview image/pc登录预览.png)
 
 
 
