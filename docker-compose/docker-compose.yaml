@@ -1,0 +1,32 @@
+# 需要在 docker-compose.yaml 路径执行下面的命令
+# 安装命令
+# docker-compose up -d
+# # 关闭 Docker 容器们
+# docker-compose down
+# # 删除已停止的 Docker 容器
+# docker-compose rm
+
+services:
+  zdinnav:
+    image: tkme/zdinnav
+    container_name: zdinnav
+    restart: unless-stopped
+    ports:
+      # 第一个9200对外访问的端口号
+      - "9200:9200"
+    networks:
+      - zdinnavnet
+    environment:
+      - TZ=Asia/Shanghai 
+    volumes:
+      # 系统配置文件(系统自动生成，可以自定义数据库类型)
+      - ./zdinnav/configuration:/app/configuration
+      # SQLite数据存放(如果配置其它数据库，此文件不会生成)
+      - ./zdinnav/database:/app/database
+      # 日志记录
+      - ./zdinnav/logs:/app/Logs
+networks:
+  zdinnavnet:
+      driver: bridge
+volumes:
+  fonts_volume:
