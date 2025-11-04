@@ -34,9 +34,32 @@
 
 安装教程：
 
-使用docker安装：
+使用docker安装(推荐使用docker compose方式安装)：
 
-`docker run -d --name zdinnav -p 9200:9200 tkme/zdinnav:1.0.0`
+```
+这个方式最简单，但是不推荐(数据没有持久化)
+docker run -d --name zdinnav -p 9200:9200 tkme/zdinnav:1.0.0
+
+数据持久化docker方式安装，必须在 zdinnav 路径下执行
+# 1、创建文件夹
+mkdir ./configuration
+mkdir ./database  
+mkdir ./logs
+
+# 2、文件添加777权限
+chmod 777 ./*
+
+# 3、docker命令安装
+docker run -d \
+  --name zdinnav \
+  --restart unless-stopped \
+  -p 9200:9200 \
+  -e TZ=Asia/Shanghai \
+  -v "$(pwd)/configuration:/app/configuration" \
+  -v "$(pwd)/database:/app/database" \
+  -v "$(pwd)/logs:/app/Logs" \
+  tkme/zdinnav:1.0.0
+```
 
 
 
@@ -53,6 +76,7 @@ services:
     container_name: zdinnav
     restart: unless-stopped
     ports:
+      # 第一个9200对外访问的端口号
       - "9200:9200"
     networks:
       - zdinnavnet
@@ -60,11 +84,11 @@ services:
       - TZ=Asia/Shanghai 
     volumes:
       # 系统配置文件(系统自动生成，可以自定义数据库类型)
-      - ./zdinnav/configuration:/app/configuration
+      - ./configuration:/app/configuration
       # SQLite数据存放(如果配置其它数据库，此文件不会生成)
-      - ./zdinnav/database:/app/database
+      - ./database:/app/database
       # 日志记录
-      - ./zdinnav/logs:/app/Logs
+      - ./logs:/app/Logs
 networks:
   zdinnavnet:
       driver: bridge
