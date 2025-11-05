@@ -50,7 +50,7 @@ mkdir ./logs
 chmod 777 ./*
 
 # 3、docker命令安装
-docker run -d \
+docker run --network host -d \
   --name zdinnav \
   --restart unless-stopped \
   -p 9200:9200 \
