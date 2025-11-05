@@ -78,8 +78,7 @@ services:
     ports:
       # 第一个9200对外访问的端口号
       - "9200:9200"
-    networks:
-      - zdinnavnet
+    network_mode: host
     environment:
       - TZ=Asia/Shanghai 
     volumes:
@@ -89,11 +88,6 @@ services:
       - ./database:/app/database
       # 日志记录
       - ./logs:/app/Logs
-networks:
-  zdinnavnet:
-      driver: bridge
-volumes:
-  fonts_volume:
 ```
 
 运行后，访问：http://IP地址:9200 
