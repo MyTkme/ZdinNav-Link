@@ -14,8 +14,8 @@
 | 智淀导航(ZdinNav) 获取地址： |
 | ------------------------------------------------------------ |
 | docker hub：[https://hub.docker.com/r/tkme/zdinnav](https://hub.docker.com/r/tkme/zdinnav) |
-| [夸克网盘](https://pan.quark.cn/s/fa5e6213e013) 提取码：cbmE |
-| [阿里云盘](https://www.alipan.com/s/5N7LrH7i1jQ) 提取码：rt20  阿里云限制分享，只能压缩exe上传，下载后直接点击exe即可解压为docker安装包 |
+| [夸克网盘](https://pan.quark.cn/s/fa5e6213e013) 提取码：cbmE 网盘限制分享，只能压缩exe上传，下载后直接点击exe即可解压为docker安装包 |
+| [阿里云盘](https://www.alipan.com/s/5N7LrH7i1jQ) 提取码：rt20  网盘限制分享，只能压缩exe上传，下载后直接点击exe即可解压为docker安装包 |
 | [百度网盘](https://pan.baidu.com/s/19q8KaSAfJ0zYQey5CGXnLQ?pwd=jw3z) 提取码：jw3z |
 
 效果图：
