@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
     ports:
       - "PORT_VAR:9200"
-    network_mode: host
+    network_mode: "bridge"
     environment:
       - TZ=Asia/Shanghai 
     volumes:

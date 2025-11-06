@@ -50,7 +50,7 @@ mkdir ./logs
 chmod 777 ./*
 
 # 3、docker命令安装
-docker run --network host -d \
+docker run -d \
   --name zdinnav \
   --restart unless-stopped \
   -p 9200:9200 \
@@ -78,7 +78,7 @@ services:
     ports:
       # 第一个9200对外访问的端口号
       - "9200:9200"
-    network_mode: host
+    network_mode: "bridge"
     environment:
       - TZ=Asia/Shanghai 
     volumes:
@@ -116,6 +116,8 @@ docker-compose.yaml文件已经放到：docker-compose下面了。
 dbType数据库类型：Sqlite、PostgreSQL、MySql、SqlServer、Oracle等，数据库底层访问使用SqlSugar，更多数据库支持可以查看该官方文档。
 
 connectionString：不同的dbType数据库类型，链接字符串不一样，根据你的实际情况修改。默认SQLite数据存数据库
+
+程序连接到其它IP地址的数据库，需要保证当前程序的docker网络可以正常访问该IP地址的数据库。
 
 
 

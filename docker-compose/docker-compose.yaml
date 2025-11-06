@@ -14,11 +14,7 @@ services:
     ports:
       # 第一个9200对外访问的端口号
       - "9200:9200"
-    # 连接到其它IP地址的数据数据使用
-    network_mode: host
-    # 连接其它IP地址的数据库，不能使用该配置
-    # networks:
-    #   - zdinnavnet
+    network_mode: "bridge"
     environment:
       - TZ=Asia/Shanghai 
     volumes:
@@ -28,9 +24,5 @@ services:
       - ./database:/app/database
       # 日志记录
       - ./logs:/app/Logs
-# 连接其它IP地址的数据库，不能使用该配置
-# networks:
-#   zdinnavnet:
-#       driver: bridge
 volumes:
   fonts_volume:
