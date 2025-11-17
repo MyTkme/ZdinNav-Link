@@ -12,5 +12,3 @@ services:
       - CONFIG_PATH_VAR/configuration:/app/configuration
       - CONFIG_PATH_VAR/database:/app/database
       - CONFIG_PATH_VAR/logs:/app/Logs
-volumes:
-  fonts_volume:
