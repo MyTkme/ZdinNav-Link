@@ -38,7 +38,7 @@
 
 ```
 这个方式最简单，但是不推荐(数据没有持久化)
-docker run -d --name zdinnav -p 9200:9200 tkme/zdinnav:1.0.0
+docker run -d --name zdinnav -p 9200:9200 tkme/zdinnav:1.1.0
 
 数据持久化docker方式安装，必须在 zdinnav 路径下执行
 # 1、创建文件夹
@@ -58,7 +58,7 @@ docker run -d \
   -v "$(pwd)/configuration:/app/configuration" \
   -v "$(pwd)/database:/app/database" \
   -v "$(pwd)/logs:/app/Logs" \
-  tkme/zdinnav:1.0.0
+  tkme/zdinnav:1.1.0
 ```
 
 
@@ -72,7 +72,7 @@ docker run -d \
 ```
 services:
   zdinnav:
-    image: tkme/zdinnav:1.0.0
+    image: tkme/zdinnav:1.1.0
     container_name: zdinnav
     restart: unless-stopped
     ports:
@@ -100,11 +100,11 @@ docker-compose.yaml文件已经放到：docker-compose下面了。
 
 
 
-如果无法访问hub.docker，可以下载离线安装包(下面使用zdinnav_linux-amd64-1.0.0.tar示例，离线安装包文件格式：zdinnav_版本号)：
+如果无法访问hub.docker，可以下载离线安装包(下面使用zdinnav_linux-amd64-1.1.0.tar示例，离线安装包文件格式：zdinnav_版本号)：
 
-执行命令(在tar文件路径下执行)：`docker load -i ./zdinnav_linux-amd64-1.0.0.tar`
+执行命令(在tar文件路径下执行)：`docker load -i ./zdinnav_linux-amd64-1.1.0.tar`
 
-然后执行：上面的安装命令，命令里面出现的 1.0.0(版本号)改成(tar的版本号)：linux-amd64-1.0.0 执行命令即可。
+然后执行：上面的安装命令，命令里面出现的 1.1.0(版本号)改成(tar的版本号)：linux-amd64-1.1.0 执行命令即可。
 
 
 
