@@ -11,6 +11,8 @@
 
 程序首次启动需耐心等待20-30秒(以免无法访问)，后访问网站。
 
+更新日志：[查看](https://github.com/MyTkme/ZdinNav-Link/blob/main/%E6%9B%B4%E6%96%B0%E6%97%A5%E5%BF%97.txt) 
+
 | 智淀导航(ZdinNav) 获取地址： |
 | ------------------------------------------------------------ |
 | docker hub：[https://hub.docker.com/r/tkme/zdinnav](https://hub.docker.com/r/tkme/zdinnav) |
