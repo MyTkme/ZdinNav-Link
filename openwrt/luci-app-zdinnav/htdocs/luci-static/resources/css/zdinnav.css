@@ -1,0 +1,79 @@
+.zdinnav-notification {
+    color: #ffffff;
+}
+
+.zdinnav-container {
+    --zdinnav-color-primary: var(--primary-color-high, #5e72e4);
+    --zdinnav-color-warn: var(--warn-color-high, #f0e68c);
+    --zdinnav-color-success: var(--success-color-high, #2dce89);
+    --zdinnav-color-error: var(--error-color-high, #f00);
+    --zdinnav-color-on-success: var(--on-success-color, #ffffff);
+    --zdinnav-color-medium-success: var(--success-color-medium, #2dce88e0);
+    --zdinnav-color-low-success: var(--success-color-low, #2dce88e0);
+    --zdinnav-color-on-error: var(--zdinnav-color-on-error, #f5365c);
+    --zdinnav-color-low-error: var(--error-color-low, #f5365c);
+    --zdinnav-color-medium-error: var(--error-color-medium, #f5365c);
+}
+
+.zdinnav-container .zdinnav-success-progress {
+    margin-left: 8px;
+    font-weight: 700;
+    color: var(--zdinnav-color-success);
+}
+
+.zdinnav-container .zdinnav-error-progress {
+    margin-left: 8px;
+    font-weight: 700;
+    color: var(--zdinnav-color-error);
+}
+
+.zdinnav-container .zdinnav-a-btn {
+    cursor: pointer;
+    color: var(--zdinnav-color-error);
+}
+
+
+.zdinnav-container .zdinnav-running {
+    margin-left: 10px;
+    color: var(--zdinnav-color-primary);
+}
+
+.zdinnav-container .zdinnav-not-running {
+    margin-left: 10px;
+    color: var(--zdinnav-color-error);
+}
+
+.zdinnav-container .zdinnav-open[type="button"] {
+    color: var(--zdinnav-color-on-success);
+    background: linear-gradient(var(--success-color-medium, #5e72e4), var(--success-color-low, #5e72e4));
+    border-color: var(--zdinnav-color-success);
+    margin-left: 10px;
+}
+
+.zdinnav-container .zdinnav-restart-btn[type="button"] {
+    color: var(--zdinnav-color-on-success);
+    background: linear-gradient(var(--zdinnav-color-medium-success), var(--zdinnav-color-low-success));
+    border-color: var(--zdinnav-color-success);
+    margin-left: 6px;
+}
+
+.zdinnav-container .zdinnav-stop-btn[type="button"] {
+    color: var(--zdinnav-color-on-success);
+    background: linear-gradient(var(--zdinnav-color-medium-error), var(--zdinnav-color-low-error));
+    border-color: var(--zdinnav-color-error);
+    margin-left: 6px;
+}
+
+.zdinnav-container .zdinnav-start-btn[type="button"] {
+    color: var(--zdinnav-color-on-success);
+    background: linear-gradient(var(--zdinnav-color-medium-success), var(--zdinnav-color-low-success));
+    border-color: var(--zdinnav-color-success);
+    margin-left: 6px;
+}
+
+.zdinnav-container .zdinnav-remove-btn[type="button"] {
+    color: var(--zdinnav-color-on-success);
+    background: linear-gradient(var(--zdinnav-color-medium-error), var(--zdinnav-color-low-error));
+    border-color: var(--zdinnav-color-error);
+    margin-left: 6px;
+}

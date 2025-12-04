@@ -1,0 +1,18 @@
+{
+  "luci-app-zdinnav": {
+    "description": "智淀导航ipk安装程序",
+    "read": {
+      "file": {
+        "/usr/libexec/zdinnav": ["exec"]
+      },
+      "ubus": { "luci.zdinnav": ["get_openwrt_info"] },
+      "uci": ["zdinnav"]
+    },
+    "write": {
+      "file": {
+        "/usr/libexec/zdinnav": ["exec"]
+      },
+      "uci": ["zdinnav"]
+    }
+  }
+}

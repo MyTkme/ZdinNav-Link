@@ -1,0 +1,1030 @@
+#!/bin/sh
+
+# JSON转义函数
+json_escape() {
+	local string="$1"
+	# 转义反斜杠
+	string=$(printf '%s' "$string" | sed 's/\\/\\\\/g')
+	# 转义双引号
+	string=$(printf '%s' "$string" | sed 's/"/\\"/g')
+	# 转义控制字符
+	string=$(printf '%s' "$string" | sed 's/\x08/\\b/g; s/\f/\\f/g; s/\n/\\n/g; s/\r/\\r/g; s/\t/\\t/g')
+	echo "$string"
+}
+
+# 设置文件夹权限
+file_permissions() {
+	local config_path="$1"
+	#设置文件夹权限
+	# chmod 777 "$config_path" 2>/dev/null
+	# 递归设置目录权限
+	find "$config_path" -type d -exec chmod 777 {} \; 2>/dev/null
+	# 递归设置文件权限
+	find "$config_path" -type f -exec chmod 766 {} \; 2>/dev/null
+}
+
+# 创建文件夹
+create_folder() {
+	local config_path="$1"
+	local config_account="$2"
+	local config_password="$3"
+	local config_database="$4"
+	local config_connection="$5"
+
+	[ ! -d "$config_path/logs" ] && mkdir -p "$config_path/logs"
+	[ ! -d "$config_path/database" ] && mkdir -p "$config_path/database"
+	[ ! -d "$config_path/configuration" ] && mkdir -p "$config_path/configuration"
+
+	# 数据库初始化配置
+	sed -e "s|ACCOUNT_VAR|${config_account}|g" \
+		-e "s|PASSWORD_VAR|${config_password}|g" \
+		"/usr/share/zdinnav/initializeData.json" >"${config_path}/configuration/initializeData.json"
+	# 系统配置文件
+	sed -e "s|DBTYPE_VAR|${config_database}|g" \
+		-e "s|CONNECTIONSTRING_VAR|${config_connection}|g" \
+		"/usr/share/zdinnav/zdinNavSettings.json" >"${config_path}/configuration/zdinNavSettings.json"
+
+	# 设置文件夹权限
+	file_permissions "$config_path"
+}
+
+# 查找父进程的所有子进程
+find_child_pids() {
+	local parent_pid="$1"
+	local child_pids=""
+
+	# 使用ls命令安全获取进程目录列表
+	for pid in $(ls -d /proc/[0-9]* 2>/dev/null | sed 's|/proc/||'); do
+		if [ -r "/proc/$pid/status" ]; then
+			ppid=$(grep "^PPid:" "/proc/$pid/status" 2>/dev/null | awk '{print $2}')
+			if [ "$ppid" = "$parent_pid" ]; then
+				child_pids="$child_pids $pid"
+			fi
+		fi
+	done
+	echo "$child_pids"
+}
+
+# 检查进程状态：0=进程运行中；1=进程已停止
+check_process_status() {
+	local pid="$1"
+	# 参数非空检查
+	[ -z "$pid" ] && return 1
+
+	if [ -d "/proc/$pid" ]; then
+		# 进程运行中
+		echo 0
+	else
+		#  "进程已停止"
+		echo 1
+	fi
+}
+
+# 创建docker可以执行的接口命令
+create_command() {
+	local content="$1"
+	local config=$(uci get zdinnav.@main[0].config_path 2>/dev/null)
+	local file_path="$config/configuration/command.txt"
+	local dir_path=$(dirname "$file_path")
+
+	# 检查目录是否存在，不存在则创建
+	if [ ! -d "$dir_path" ]; then
+		mkdir -p "$dir_path"
+	fi
+
+	# 检查文件是否存在，不存在则创建
+	if [ ! -f "$file_path" ]; then
+		# 创建文件
+		touch "$file_path"
+		# 设置文件夹权限
+		file_permissions "$config"
+	fi
+
+	# 添加内容
+	echo "$content" >>"$file_path"
+
+	if [ $? -ne 0 ]; then
+		echo "create command error" >&2
+		return 1
+	fi
+}
+
+# 获取最新版号
+get_version() {
+	local platform="$1"
+	local version_url="$2"
+	local version_hub_url="$3"
+	local content=""
+
+	echo "智淀导航docker版本获取中...,Fetching ZdinNav Docker version..." >&2
+
+	# 检查wget是否安装
+	if ! which wget >/dev/null 2>&1; then
+		echo "错误: wget未安装！Error: wget is not installed!" >&2
+		echo "请使用以下命令安装wget：Please use the following commands to install wget:" >&2
+		echo "1. 更新软件包列表: opkg update。1. Update package list: opkg update." >&2
+		echo "2. 安装wget: opkg install wget。2. Install wget: opkg install wget." >&2
+		return
+	fi
+
+	# hub官网获取最新版
+	local version_last=$(wget --no-check-certificate -q -O - "$version_hub_url" |
+		grep -o '"name":"[^"]*"' |
+		grep -o '[0-9]*\.[0-9]*\.[0-9]*' |
+		sort -t '.' -n -k1,1 -k2,2 -k3,3 |
+		tail -1)
+	if [ -n "$version_last" ]; then
+		echo "$version_last"
+		return
+	fi
+
+	if [ -z "$platform" ]; then
+		echo "无法获取当前支持的平台类型无法安装。Unable to determine the supported platform type. Installation cannot proceed." >&2
+		return
+	fi
+
+	# Github 获取最新版逻辑
+	content=$(wget --no-check-certificate -q -O - "$version_url" 2>/dev/null)
+	if [ $? -ne 0 ] || [ -z "$content" ]; then
+		echo "URL请求失败，网络不稳定，目前无法访问。URL request failed: Unstable network connection, currently inaccessible." >&2
+		return
+	fi
+
+	# 匹配指定的型号版本
+	local version_line=$(echo "$content" | grep -i "[[:space:]]*$platform[[:space:]]*:[[:space:]]*")
+	# 调试输出获取到的内容
+	# echo "内容预览:" >&2
+	# echo "$content" | head -5 >&2
+	if [ -z "$version_line" ]; then
+		echo "当前可能不支持 '$platform' 平台的安装，更多信息访问git。Installation on '$platform' platform may not be supported at this time. For more information, visit git." >&2
+		return
+	fi
+
+	# 字符串截取：aaa:bbb 只获取bbb
+	local version=$(echo "$version_line" | sed 's/.*://' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+	if [ -z "$version" ]; then
+		echo "更新失败，无法获取最新版本号。Update failed: unable to retrieve the latest version number." >&2
+		return
+	fi
+	echo "$version"
+}
+
+# 安装程序
+install_zdinnav() {
+	local port="$1"
+	local config_path="$2"
+	local enable_offline_installation="$3"
+	local database_type="$4"
+	local connection_settings="$5"
+	local administrator_account="$6"
+	local administrator_password="$7"
+
+	# 读取配置文件数据
+	local docker_url=$(uci get zdinnav.@zdinnav_const_config[0].docker_url 2>/dev/null)
+	local version=$(uci get zdinnav.@zdinnav_config[0].version 2>/dev/null)
+	local version_url=$(uci get zdinnav.@zdinnav_const_config[0].version_url 2>/dev/null)
+	local version_hub_url=$(uci get zdinnav.@zdinnav_const_config[0].version_hub_url 2>/dev/null)
+
+	local tz="Asia/Shanghai"
+	local latest_tar=""
+
+	if [ -z "$config_path" ]; then
+		echo "config path is empty!" >&2
+		return 1
+	fi
+
+	mkdir -p $config_path
+	if [ $? -ne 0 ]; then
+		echo "mkdir config path failed" >&2
+		return 1
+	fi
+
+	if [ "$enable_offline_installation" = "1" ]; then
+		# 离线安装
+		# 设置文件夹权限
+		file_permissions "$config_path"
+		# 离线安装(检查安装包是否存在需要检查安装包是否存在)
+		latest_tar=$(ls -t "$config_path/downloads/"*.tar 2>/dev/null | head -n 1)
+		if [ -n "$latest_tar" ]; then
+			local basename="${latest_tar%.tar}"
+			# 获取版本号:zdinnav_linux-amd64-1.0.0.tar 返回：linux-amd64-1.0.0
+			local version_local="${basename#*_}"
+			if [ -z "$version_local" ]; then
+				echo "无法解析安装包，请不要修改安装包文件名。Unable to parse the installation package. Do not modify its file name." >&2
+				return 1
+			fi
+
+			local docker_state=$(docker ps --all -f 'name=^/zdinnav' --format '{{.State}}')
+			# 停止并删除并旧版本
+			if [ -n "$docker_state" ]; then
+				docker rm -f zdinnav
+			fi
+			if [[ "$(docker images -q $docker_url:$version 2>/dev/null)" != "" ]]; then
+				docker rmi "$docker_url:$version"
+			fi
+
+			# 安装docker离线文件
+			docker load -i "$latest_tar"
+			if [ $? -ne 0 ]; then
+				echo "docker load 执行失败，请检查*.tar安装包是否正确。The 'docker load' command failed. Please verify the integrity of the *.tar file." >&2
+				return 1
+			fi
+			version=$version_local
+			# 离线安装版本检查
+			local zdinnav_tag=$(docker images --format "{{.Repository}} {{.Tag}} {{.CreatedAt}}" | grep -E ".*/zdinnav" | sort -r | head -n 1 | awk '{print $2}')
+			if [ "$zdinnav_tag" != "$version"]; then
+				echo "安装失败，请重新下载安装包，下载后勿修改，放至指定位置后重装。Installation failed. Redownload the package unmodified, move it to the specified location, and retry installation." >&2
+				return 1
+			fi
+		else
+			echo "无法找到安装包。Cannot find the installation package." >&2
+			return 1
+		fi
+	else
+		# 在线安装
+		# 获取平台类型
+		local arch=$(auto_arch)
+		# 在线安装，每次安装检查是否存在最新版本
+		local latest_version=$(get_version "$arch" "$version_url" "$version_hub_url")
+		# 这里只能判断是否为空
+		if [ -z "$latest_version" ]; then
+			return 1
+		fi
+		# 检查是否需要更新版本
+		local is_update=$(compare_versions "$latest_version" "$version")
+		if [ "$is_update" -eq 1 ]; then
+			version=$latest_version
+		fi
+
+		# 显示输出
+		echo "docker pull $docker_url:$version" >&2
+		# 拉取镜像
+		docker pull "$docker_url:$version"
+		# 错误检查
+		if [ $? -ne 0 ]; then
+			echo "智淀导航docker拉取失败 ！zdinnav docker pull failed!" >&2
+			return 1
+		fi
+	fi
+
+	# 创建文件夹，创建配置文件
+	create_folder "$config_path" "$administrator_account" "$administrator_password" "$database_type" "$connection_settings"
+	# 跳转指定路径
+	cd $config_path
+	# docker 命令
+	local cmd="docker run --restart=unless-stopped -d "
+	# 设置配置参数
+	cmd="$cmd -p $port:9200"
+	[ -z "$tz" ] || cmd="$cmd -e TZ=$tz"
+	# 设置配置文件
+	cmd="$cmd -v \"$config_path/configuration/:/app/configuration\""
+	cmd="$cmd -v \"$config_path/database/:/app/database\""
+	cmd="$cmd -v \"$config_path/logs/:/app/Logs\""
+	# 设置程序名称和镜像地址
+	cmd="$cmd --name=zdinnav \"$docker_url:$version\""
+	# 输出docker命令
+	echo "$cmd" >&2
+	# 执行脚本
+	eval "$cmd"
+	# 错误检查
+	if [ $? -ne 0 ]; then
+		echo "智淀导航安装出现错误！zdinnav installation failed!" >&2
+		return 1
+	fi
+
+	# 离线安装时，校验
+	if [ "$enable_offline_installation" = "1" ]; then
+		# 休眠3秒后，校验是否正常运行
+		sleep 3
+		local zdinnav_State=$(docker ps --all -f 'name=^/zdinnav' --format '{{.State}}')
+		if [[ -z "$zdinnav_State" || "$zdinnav_State" != "running" ]]; then
+			echo "智淀导航运行失败，请检查*.tar安装包是否支持该平台。The zdinnav application failed to start. Ensure the *.tar package is compatible with the current platform." >&2
+			# 移除错误docker数据
+			docker rm -f zdinnav
+			docker rmi "$docker_url:$version"
+			return 1
+		fi
+	fi
+
+	# 更新版本记录
+	uci set zdinnav.@zdinnav_config[0].version=$version
+	uci commit zdinnav
+
+	# 删除安装包
+	if [[ -n "$latest_tar" && -f "$latest_tar" ]]; then
+		rm -f "$latest_tar"
+	fi
+}
+
+# 升级程序
+upgrade_zdinnav() {
+	# 读取配置文件数据
+	local port="$1"
+	local config_path="$2"
+	local enable_offline_installation="$3"
+	local database_type="$4"
+	local connection_settings="$5"
+	local administrator_account="$6"
+	local administrator_password="$7"
+	# 读取配置文件数据
+	local docker_url=$(uci get zdinnav.@zdinnav_const_config[0].docker_url 2>/dev/null)
+	local version=$(uci get zdinnav.@zdinnav_config[0].version 2>/dev/null)
+	local version_url=$(uci get zdinnav.@zdinnav_const_config[0].version_url 2>/dev/null)
+	local version_hub_url=$(uci get zdinnav.@zdinnav_const_config[0].version_hub_url 2>/dev/null)
+
+	local tz="Asia/Shanghai"
+	local latest_tar=""
+
+	if [ -z "$config_path" ]; then
+		echo "config path is empty!" >&2
+		return 1
+	fi
+
+	mkdir -p $config_path
+	if [ $? -ne 0 ]; then
+		echo "mkdir config path failed" >&2
+		return 1
+	fi
+
+	if [ "$enable_offline_installation" = "1" ]; then
+		# 离线升级安装
+		# 设置文件夹权限
+		file_permissions "$config_path"
+		# 离线安装(检查安装包是否存在需要检查安装包是否存在)
+		latest_tar=$(ls -t "$config_path/downloads/"*.tar 2>/dev/null | head -n 1)
+		if [ -n "$latest_tar" ]; then
+			local basename="${latest_tar%.tar}"
+			# 获取版本号:zdinnav_linux-amd64-1.0.0.tar 返回：linux-amd64-1.0.0
+			local version_local="${basename#*_}"
+			if [ -z "$version_local" ]; then
+				echo "无法解析安装包，请不要修改安装包文件名。Unable to parse the installation package. Do not modify its file name." >&2
+				return 1
+			fi
+			local is_update=$(compare_versions "$version_local" "$version")
+			if [ "$is_update" -ne 1 ]; then
+				# 删除安装包
+				rm -f "$latest_tar"
+				echo "当前已经是最新版：$version。You're already on the latest version: $version." >&2
+				return 0
+			fi
+
+			local docker_state=$(docker ps --all -f 'name=^/zdinnav' --format '{{.State}}')
+			# 停止并删除并旧版本
+			if [ -n "$docker_state" ]; then
+				docker rm -f zdinnav
+			fi
+			if [[ "$(docker images -q $docker_url:$version 2>/dev/null)" != "" ]]; then
+				docker rmi "$docker_url:$version"
+			fi
+
+			# 安装docker离线文件
+			docker load -i "$latest_tar"
+			if [ $? -ne 0 ]; then
+				echo "docker load 执行失败，请检查*.tar安装包是否正确。The 'docker load' command failed. Please verify the integrity of the *.tar file." >&2
+				return 1
+			fi
+			version=$version_local
+			# 离线安装版本检查
+			local zdinnav_tag=$(docker images --format "{{.Repository}} {{.Tag}} {{.CreatedAt}}" | grep -E ".*/zdinnav" | sort -r | head -n 1 | awk '{print $2}')
+			if [ "$zdinnav_tag" != "$version"]; then
+				echo "安装失败，请重新下载安装包，下载后勿修改，放至指定位置后重装。Installation failed. Redownload the package unmodified, move it to the specified location, and retry installation." >&2
+				return 1
+			fi
+		else
+			echo "无法找到安装包。Cannot find the installation package." >&2
+			return 1
+		fi
+	else
+		# 在线升级安装
+		# 获取平台类型
+		local arch=$(auto_arch)
+		# 获取最新版
+		local latest_version=$(get_version "$arch" "$version_url" "$version_hub_url")
+		# 这里只能判断是否为空(为空表示无法获取最新版本号)
+		if [ -z "$latest_version" ]; then
+			return 1
+		fi
+		local is_update=$(compare_versions "$latest_version" "$version")
+
+		# 检查是否需要升级应用
+		if [ "$is_update" -eq 1 ]; then
+			echo "发现新版本：$latest_version。New version found: $latest_version." >&2
+
+			# 显示输出
+			echo "docker pull docker_url:$latest_version" >&2
+			# 拉取镜像
+			docker pull "$docker_url:$latest_version"
+			# 错误检查
+			if [ $? -ne 0 ]; then
+				echo "智淀导航docker拉取失败 ！zdinnav docker pull failed!" >&2
+				return 1
+			fi
+
+			local docker_state=$(docker ps --all -f 'name=^/zdinnav' --format '{{.State}}')
+			if [ -n "$docker_state" ]; then
+				docker rm -f zdinnav
+			fi
+			if [[ "$(docker images -q $docker_url:$version 2>/dev/null)" != "" ]]; then
+				docker rmi "$docker_url:$version"
+			fi
+			# 更新版本
+			version=$latest_version
+		else
+			if [[ -n "$latest_version" && "$latest_version" != "1" ]]; then
+				echo "当前已经是最新版：$version。You're already on the latest version: $version." >&2
+				return 0
+			fi
+		fi
+	fi
+
+	# 创建文件夹，创建配置文件
+	create_folder "$config_path" "$administrator_account" "$administrator_password" "$database_type" "$connection_settings"
+	# 跳转指定路径
+	cd $config_path
+	# docker 命令
+	local cmd="docker run --restart=unless-stopped -d "
+	# 设置配置参数
+	cmd="$cmd -p $port:9200"
+	[ -z "$tz" ] || cmd="$cmd -e TZ=$tz"
+	# 设置配置文件
+	cmd="$cmd -v \"$config_path/configuration:/app/configuration\""
+	cmd="$cmd -v \"$config_path/database:/app/database\""
+	cmd="$cmd -v \"$config_path/logs:/app/Logs\""
+	# 设置程序名称和镜像地址
+	cmd="$cmd --name zdinnav \"$docker_url:$version\""
+	# 输出docker命令
+	echo "$cmd" >&2
+	# 执行脚本
+	eval "$cmd"
+	# 错误检查
+	if [ $? -ne 0 ]; then
+		echo "智淀导航安装出现错误！zdinnav installation failed!" >&2
+		return 1
+	fi
+
+	# 离线安装时，校验
+	if [ "$enable_offline_installation" = "1" ]; then
+		# 休眠3秒后，校验是否正常运行
+		sleep 3
+		local zdinnav_State=$(docker ps --all -f 'name=^/zdinnav' --format '{{.State}}')
+		if [[ -z "$zdinnav_State" || "$zdinnav_State" != "running" ]]; then
+			echo "智淀导航运行失败，请检查*.tar安装包是否支持该平台。The zdinnav application failed to start. Ensure the *.tar package is compatible with the current platform." >&2
+			# 移除错误docker数据
+			docker rm -f zdinnav
+			docker rmi "$docker_url:$version"
+			return 1
+		fi
+	fi
+
+	# 更新版本记录
+	uci set zdinnav.@zdinnav_config[0].version=$version
+	uci commit zdinnav
+
+	# 删除安装包
+	if [[ -n "$latest_tar" && -f "$latest_tar" ]]; then
+		rm -f "$latest_tar"
+	fi
+}
+
+# 获取当前型号对应的平台版本
+auto_arch() {
+	case $(uname -m) in
+	x86_64 | amd64) echo "linux-amd64" ;;
+	armv7l | armhf) echo "linux-arm" ;;
+	aarch64 | arm64) echo "linux-arm64" ;;
+	*) echo "$(uname -m)" ;;
+	esac
+}
+
+# 获取访问类型：http=1、https=0
+do_protocol() {
+	local config=$(uci get zdinnav.@main[0].config_path 2>/dev/null)
+	if [ -f "${config}/configuration/SSLSettings.json" ]; then
+		echo true
+	else
+		echo false
+	fi
+}
+
+# 智淀导航 程序运行信息
+do_get_zdinNav_run_info() {
+	# 是否安装
+	local is_install="false"
+	# 运行状态
+	local status="false"
+	# 访问类型： false=Http类型， true=https类型
+	local is_https="false"
+	# 端口号
+	local port="8080"
+	# 前型号对应的平台版本
+	local arch=$(auto_arch)
+
+	# 检查运行状态
+	local docker_state=$(docker ps --all -f 'name=^/zdinnav' --format '{{.State}}')
+	if [ -n "$docker_state" ]; then
+		# 非空表示 已经安装
+		if [ "$docker_state" = "running" ]; then
+			# 运行中
+			status="true"
+			# 运行状态 检查访问类型
+			is_https=$(do_protocol)
+			# 获取端口号
+			port=$(docker ps -all -f 'name=^/zdinnav' --format '{{.Ports}}' | grep -om1 '0.0.0.0:[0-9]*' | sed 's/0.0.0.0://')
+		fi
+		is_install="true"
+	fi
+
+	cat <<EOF
+{
+	"autoArch":"$arch",
+	"isInstall":$is_install,
+	"status":$status,
+	"isHttps":$is_https,
+	"port":$port
+}
+EOF
+}
+
+# 智淀导航 表单信息
+do_get_zdinNav_from_info() {
+	#其它配置(隐藏的配置信息)
+	local process_id=$(uci get zdinnav.@zdinnav_config[0].process_id 2>/dev/null || echo "")
+	local git_url=$(uci get zdinnav.@zdinnav_const_config[0].git_url 2>/dev/null || echo "")
+	#初始化默认值(重置表单使用)
+	local default_port=$(uci get zdinnav.@zdinnav_const_config[0].default_port 2>/dev/null || echo "")
+	local default_database_type=$(uci get zdinnav.@zdinnav_const_config[0].default_database_type 2>/dev/null || echo "")
+	local default_connection_settings=$(uci get zdinnav.@zdinnav_const_config[0].default_connection_settings 2>/dev/null || echo "")
+	local default_administrator_account=$(uci get zdinnav.@zdinnav_const_config[0].default_administrator_account 2>/dev/null || echo "")
+	local default_administrator_password=$(uci get zdinnav.@zdinnav_const_config[0].default_administrator_password 2>/dev/null || echo "")
+
+	# 用的配置信息
+	local port=$(uci get zdinnav.@main[0].port 2>/dev/null || echo "$default_port")
+	local config_path=$(uci get zdinnav.@main[0].config_path 2>/dev/null || echo "")
+	local enable_offline_installation=$(uci get zdinnav.@main[0].enable_offline_installation 2>/dev/null || echo "0")
+	local database_type=$(uci get zdinnav.@main[0].database_type 2>/dev/null || echo "$default_database_type")
+	local connection_settings=$(uci get zdinnav.@main[0].connection_settings 2>/dev/null || echo "$default_connection_settings")
+	local administrator_account=$(uci get zdinnav.@main[0].administrator_account 2>/dev/null || echo "$default_administrator_account")
+	local administrator_password=$(uci get zdinnav.@main[0].administrator_password 2>/dev/null || echo "$default_administrator_password")
+
+	cat <<EOF
+	{
+	   "form_data": {
+	      "port":"$(json_escape "$port")",
+	      "config_path":"$(json_escape "$config_path")",
+	      "enable_offline_installation":"$(json_escape "$enable_offline_installation")",
+	      "database_type":"$(json_escape "$database_type")",
+	      "connection_settings":"$(json_escape "$connection_settings")",
+	      "administrator_account":"$(json_escape "$administrator_account")",
+	      "administrator_password":"$(json_escape "$administrator_password")"
+	   },
+	   "other_config": {
+	      "process_id":"$(json_escape "$process_id")",
+	      "git_url":"$(json_escape "$git_url")"
+	   },
+	   "default_form_data": {
+	      "port":"$(json_escape "$default_port")",
+	      "config_path": "",
+	      "enable_offline_installation":"0",
+	      "database_type":"$(json_escape "$default_database_type")",
+	      "connection_settings":"$(json_escape "$default_connection_settings")",
+	      "administrator_account":"$(json_escape "$default_administrator_account")",
+	      "administrator_password":"$(json_escape "$default_administrator_password")"
+	   }
+	}
+EOF
+}
+
+# 检查安离线装包是否存在：0=存在，1=不存在
+do_package_exists() {
+	local latest_tar=$(ls -t "$1/downloads/"*.tar 2>/dev/null | head -n 1)
+	if [ -n "$latest_tar" ]; then
+		echo 0
+	else
+		echo 1
+	fi
+}
+
+# 标记日志状态，如果未完毕，进行终止任务
+do_close_progress() {
+	# 运行状态
+	local status="$1"
+
+	local process_id=$(uci get zdinnav.@zdinnav_config[0].process_id 2>/dev/null)
+	# 参数非空检查
+	[ -z "$process_id" ] && return 0
+
+	# 非完成状态，关闭进程
+	if [ -z "$status" ] || [ "$status" != "finish" ]; then
+		# 查找所有子进程
+		local children=$(find_child_pids "$process_id")
+		# 先终止子进程
+		for child_pid in $children; do
+			kill "$child_pid" 2>/dev/null
+		done
+
+		# 再终止父进程
+		kill "$process_id" 2>/dev/null
+	fi
+
+	# 记录全局进程Id
+	uci set zdinnav.@zdinnav_config[0].process_id=""
+	# 提交配置
+	uci commit zdinnav
+	# echo "已终止进程 $process_id 及其子进程: $children"
+	echo "0"
+}
+
+# 读取安装、升级 操作 日志
+# 返回: JSON格式 {last_line: 最新行号,state:状态标记：processing=处理中、finish=完成、error=异常,lines: [行数据数组]}
+do_read_install_log() {
+	# 读取起始行号，下标 1 开始
+	local last_read_line="$1"
+	# 配置文件读取的数据
+	local config_path=$(uci get zdinnav.@main[0].config_path 2>/dev/null)
+	local log_file="$config_path/logs/progress-log.txt"
+	# 方法内部使用变量
+	local content_lines=""
+	local line_count=0
+	local new_last_line=0
+	local state="\"processing"\"
+	local end_content="---zdinnav end---"
+	local error_content="---zdinnav error---"
+
+	# 检查文件是否存在
+	if [ ! -f "$log_file" ]; then
+		echo '{"last_line":0,state:"finish","lines":[]}'
+		return 1
+	fi
+
+	if [ -z "$last_read_line" ] || [ "$last_read_line" -le 0 ]; then
+		last_read_line=1
+	fi
+
+	last_read_line=$((last_read_line - 1))
+	start_line=$((last_read_line + 1))
+	# 使用sed直接从指定行开始读取，避免全文件循环
+	while IFS= read -r line; do
+		# JSON转义
+		escaped_line=$(json_escape "$line")
+		# 发现结束标记立即跳出
+		if [ -n "$escaped_line" ] && [ "$escaped_line" = "$end_content" ]; then
+			state="\"finish"\"
+			break
+		elif [ -n "$escaped_line" ] && [ "$escaped_line" = "$error_content" ]; then
+			state="\"error"\"
+			break
+		fi
+
+		# 构建JSON数组
+		if [ -z "$content_lines" ]; then
+			content_lines="\"$escaped_line\""
+		else
+			content_lines="$content_lines,\"$escaped_line\""
+		fi
+
+		line_count=$((line_count + 1))
+		new_last_line=$((last_read_line + line_count))
+
+	done <<EOF
+$(sed -n "${start_line},\$p" "$log_file" 2>/dev/null)
+EOF
+
+	# 构建JSON输出
+	if [ $line_count -eq 0 ] || [ "$content_lines" = "" ] || [ -z "$escaped_line" ]; then
+		echo "{\"last_line\":0,\"state\":$state,\"lines\":[]}"
+	else
+		echo "{\"last_line\":$new_last_line,\"state\":$state,\"lines\":[$content_lines]}"
+	fi
+}
+
+# 重置http访问：0=执行成功、1=执行失败
+do_reset_http() {
+	local config=$(uci get zdinnav.@main[0].config_path 2>/dev/null)
+	# 设置文件夹权限
+	file_permissions "$config"
+	# 删除文件
+	if [ -f "${config}/configuration/ZdinNav.pfx" ]; then
+		rm -f "${config}/configuration/ZdinNav.pfx"
+	fi
+	if [ -f "${config}/configuration/SSLSettings.json" ]; then
+		rm -f "${config}/configuration/SSLSettings.json"
+	fi
+	# 创建重置http命令
+	create_command "RESETHTTP"
+	# 重启docker
+	docker restart zdinnav
+	if [ $? -ne 0 ]; then
+		exit 1
+	fi
+	sleep 3 2>&1
+}
+
+# 重置超级管理员密码：0=执行成功、1=执行失败
+do_reset_administrator_password() {
+	# 创建重置密码命令
+	create_command "RESETPASSWORD"
+	# 重启docker
+	docker restart zdinnav
+	if [ $? -ne 0 ]; then
+		exit 1
+	fi
+	sleep 3 2>&1
+}
+
+# 版本号比较：1=发现新版本、0=不需要更新
+compare_versions() {
+	# 服务器版本号
+	local server_ver=$(echo "$1" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+	# 当前版本号
+	local current_ver=$(echo "$2" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+	# 提取数字部分
+	local server_digits=$(echo "$server_ver" | sed 's/[^0-9]/ /g' | tr ' ' '\n' | grep -v '^$' | tr '\n' ' ')
+	local current_digits=$(echo "$current_ver" | sed 's/[^0-9]/ /g' | tr ' ' '\n' | grep -v '^$' | tr '\n' ' ')
+	# 比较主版本号
+	local server_major=$(echo "$server_digits" | cut -d' ' -f1)
+	local current_major=$(echo "$current_digits" | cut -d' ' -f1)
+	if [ "$server_major" -gt "$current_major" ]; then
+		echo 1
+		return
+	elif [ "$server_major" -lt "$current_major" ]; then
+		echo 0
+		return
+	fi
+
+	# 比较次版本号
+	server_minor=$(echo "$server_digits" | cut -d' ' -f2)
+	current_minor=$(echo "$current_digits" | cut -d' ' -f2)
+	server_minor=${server_minor:-0}
+	current_minor=${current_minor:-0}
+	if [ "$server_minor" -gt "$current_minor" ]; then
+		echo 1
+		return
+	elif [ "$server_minor" -lt "$current_minor" ]; then
+		echo 0
+		return
+	fi
+
+	# 比较修订版本号
+	server_patch=$(echo "$server_digits" | cut -d' ' -f3)
+	current_patch=$(echo "$current_digits" | cut -d' ' -f3)
+	server_patch=${server_patch:-0}
+	current_patch=${current_patch:-0}
+	if [ "$server_patch" -gt "$current_patch" ]; then
+		echo 1
+		return
+	else
+		echo 0
+		return
+	fi
+}
+
+# 移除应用
+do_remove() {
+	local docker_url=$(uci get zdinnav.@zdinnav_const_config[0].docker_url 2>/dev/null)
+	local version=$(uci get zdinnav.@zdinnav_config[0].version 2>/dev/null)
+	local docker_state=$(docker ps --all -f 'name=^/zdinnav' --format '{{.State}}')
+	# 删除程序
+	if [ -n "$docker_state" ]; then
+		docker rm -f zdinnav
+	fi
+	# 删除镜像
+	if [[ "$(docker images -q $docker_url:$version 2>/dev/null)" != "" ]]; then
+		docker rmi "$docker_url:$version"
+	fi
+	# 返回结果
+	exit $?
+}
+
+# 启动异步安装docker程序，安装日志写入到指定文件
+do_install_zdinnav() {
+	local port="$1"
+	local config_path="$2"
+	local enable_offline_installation="$3"
+	local database_type="$4"
+	local connection_settings="$5"
+	local administrator_account="$6"
+	local administrator_password="$7"
+	local log_file="$config_path/logs/progress-log.txt"
+	local process_id=$(uci get zdinnav.@zdinnav_config[0].process_id 2>/dev/null)
+	# 如果存在进程，直接返回
+	if [ -n "$process_id" ] && kill -0 "$process_id" 2>/dev/null; then
+		echo "$process_id"
+		return 0
+	fi
+
+	local log_dir=$(dirname "$log_file")
+	mkdir -p "$log_dir" 2>/dev/null
+	[ -f "$log_file" ] && rm -f "$log_file"
+	touch "$log_file"
+
+	# 后台执行任务
+	{
+		install_zdinnav "$port" "$config_path" "$enable_offline_installation" "$database_type" "$connection_settings" "$administrator_account" "$administrator_password" "$process_id"
+		# 错误检查
+		if [ $? -ne 0 ]; then
+			echo "---zdinnav error---"
+			return 1
+		fi
+
+		echo "---zdinnav end---"
+	} >"$log_file" 2>&1 &
+
+	# 赋值进程id
+	process_id=$!
+	# 记录全局进程Id
+	uci set zdinnav.@zdinnav_config[0].process_id=$process_id
+	# 提交配置
+	uci commit zdinnav
+	echo "$process_id"
+}
+
+# 启动异步升级docker程序，安装日志写入到指定文件
+do_upgrade_zdinnav() {
+	local port="$1"
+	local config_path="$2"
+	local enable_offline_installation="$3"
+	local database_type="$4"
+	local connection_settings="$5"
+	local administrator_account="$6"
+	local administrator_password="$7"
+	local log_file="$config_path/logs/progress-log.txt"
+	local process_id=$(uci get zdinnav.@zdinnav_config[0].process_id 2>/dev/null)
+
+	# 如果存在进程，直接返回
+	if [ -n "$process_id" ] && kill -0 "$process_id" 2>/dev/null; then
+		echo "$process_id"
+		return 0
+	fi
+
+	local log_dir=$(dirname "$log_file")
+	mkdir -p "$log_dir" 2>/dev/null
+	[ -f "$log_file" ] && rm -f "$log_file"
+	touch "$log_file"
+
+	# 后台执行任务
+	{
+		upgrade_zdinnav "$port" "$config_path" "$enable_offline_installation" "$database_type" "$connection_settings" "$administrator_account" "$administrator_password" "$process_id"
+		# 错误检查
+		if [ $? -ne 0 ]; then
+			echo "---zdinnav error---" >&2
+			return 1
+		fi
+
+		echo "---zdinnav end---" >&2
+	} >"$log_file" 2>&1 &
+
+	# 赋值进程id
+	process_id=$!
+	# 记录全局进程Id
+	uci set zdinnav.@zdinnav_config[0].process_id=$process_id
+	# 提交配置
+	uci commit zdinnav
+	echo "$process_id"
+}
+
+# 安装docker程序
+do_install() {
+	# 获取提交的参数
+	local port=$(echo "$1" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+	local config_path=$(echo "$2" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+	local enable_offline_installation=$(echo "$3" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+	local database_type=$(echo "$4" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+	local connection_settings=$(echo "$5" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+	local administrator_account=$(echo "$6" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+	local administrator_password=$(echo "$7" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+	# 配置文件读取
+	local process_id=$(uci get zdinnav.@zdinnav_config[0].process_id 2>/dev/null)
+
+	# 直接判断其中只要有一个为空或空字符串，就提示参数不能为空
+	if [ -z "$port" ] || [ -z "$config_path" ] || [ -z "$enable_offline_installation" ] || [ -z "$database_type" ] || [ -z "$connection_settings" ] || [ -z "$administrator_account" ] || [ -z "$administrator_password" ]; then
+		echo "提交的参数存在空字符串。The submitted parameters contain empty strings." >&2
+		exit 1
+	fi
+
+	# 启动异步安装docker程序，安装日志写入到指定文件
+	do_install_zdinnav "$port" "$config_path" "$enable_offline_installation" "$database_type" "$connection_settings" "$administrator_account" "$administrator_password" "$process_id"
+	# 错误检查
+	if [ $? -ne 0 ]; then
+		echo "智淀导航安装失败！zdinnav installation failed!" >&2
+		exit 1
+	fi
+
+	# 保存提交数据
+	uci -q batch <<-EOF >/dev/null
+		    set zdinnav.@main[0].port='$port'
+		    set zdinnav.@main[0].config_path='$config_path'
+		    set zdinnav.@main[0].enable_offline_installation='0'
+		    set zdinnav.@main[0].database_type='$database_type'
+		    set zdinnav.@main[0].connection_settings='$connection_settings'
+			set zdinnav.@main[0].administrator_account='$administrator_account'
+			set zdinnav.@main[0].administrator_password='$administrator_password'
+			commit zdinnav
+	EOF
+
+	echo "processing"
+}
+
+# 升级docker程序
+do_upgrade() {
+	# 获取提交的参数
+	local port=$(echo "$1" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+	local config_path=$(echo "$2" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+	local enable_offline_installation=$(echo "$3" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+	local database_type=$(echo "$4" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+	local connection_settings=$(echo "$5" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+	local administrator_account=$(echo "$6" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+	local administrator_password=$(echo "$7" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+	# 配置文件读取
+	local process_id=$(uci get zdinnav.@zdinnav_config[0].process_id 2>/dev/null)
+
+	# 直接判断其中只要有一个为空或空字符串，就提示参数不能为空
+	if [ -z "$port" ] || [ -z "$config_path" ] || [ -z "$enable_offline_installation" ] || [ -z "$database_type" ] || [ -z "$connection_settings" ] || [ -z "$administrator_account" ] || [ -z "$administrator_password" ]; then
+		echo "提交的参数存在空字符串。The submitted parameters contain empty strings." >&2
+		exit 1
+	fi
+
+	# 启动异步升级docker程序，安装日志写入到指定文件
+	do_upgrade_zdinnav "$port" "$config_path" "$enable_offline_installation" "$database_type" "$connection_settings" "$administrator_account" "$administrator_password" "$process_id"
+	# 错误检查
+	if [ $? -ne 0 ]; then
+		echo "智淀导航升级失败！zdinnav upgrade failed!" >&2
+		exit 1
+	fi
+
+	# 保存提交数据
+	uci -q batch <<-EOF >/dev/null
+		    set zdinnav.@main[0].port='$port'
+		    set zdinnav.@main[0].config_path='$config_path'
+		    set zdinnav.@main[0].enable_offline_installation='0'
+		    set zdinnav.@main[0].database_type='$database_type'
+		    set zdinnav.@main[0].connection_settings='$connection_settings'
+			set zdinnav.@main[0].administrator_account='$administrator_account'
+			set zdinnav.@main[0].administrator_password='$administrator_password'
+			commit zdinnav
+	EOF
+
+	echo "processing"
+}
+
+usage() {
+	echo "usage: $0 sub-command"
+	echo "where sub-command is one of:"
+	echo "      install                Install the zdinnav"
+	echo "      upgrade                Upgrade the zdinnav"
+	echo "      rm/start/stop/restart  Remove/Start/Stop/Restart the zdinnav"
+	echo "      get_status			   ZdinNav status"
+	echo "      get_port			   ZdinNav port"
+	echo "      get_port			   ZdinNav port"
+}
+
+case $1 in
+"get_zdinNav_run_info")
+	# 智淀导航 程序运行信息
+	do_get_zdinNav_run_info
+	;;
+"get_zdinNav_from_info")
+	# 智淀导航 表单信息
+	do_get_zdinNav_from_info
+	;;
+"get_read_log")
+	# 读取安装、升级 操作 日志
+	do_read_install_log "$2"
+	;;
+"get_package_exists")
+	# 检查安离线装包是否存在
+	do_package_exists "$2"
+	;;
+"close_progress")
+	# 标记日志状态，如果未完毕，进行终止任务
+	do_close_progress "$2"
+	;;
+"reset_http")
+	# 重置http访问
+	do_reset_http
+	;;
+"reset_password")
+	# 重置超级管理员密码
+	do_reset_administrator_password
+	;;
+"install")
+	# 安装程序
+	do_install "$2" "$3" "$4" "$5" "$6" "$7" "$8"
+	;;
+"upgrade")
+	# 程序升级
+	do_upgrade "$2" "$3" "$4" "$5" "$6" "$7" "$8"
+	;;
+"rm")
+	# 移除应用
+	do_remove
+	;;
+"start" | "stop" | "restart")
+	# 启动、停止、重启
+	docker "$1" zdinnav
+	sleep 3 2>&1
+	;;
+*)
+	usage
+	exit 1
+	;;
+esac

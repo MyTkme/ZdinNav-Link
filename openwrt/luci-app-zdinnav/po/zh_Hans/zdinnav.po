@@ -1,0 +1,191 @@
+msgid "ZdinNav"
+msgstr "智淀导航"
+
+msgid "ZdinNav software is a bookmark management tool for websites,Git website:"
+msgstr "智淀导航：网站书签管理的工具，Git网址："
+
+msgid "access"
+msgstr "访问"
+
+msgid "Default Ultra-Super Administrator:zdinnav Password:pwd123"
+msgstr "默认超高级管理员：zdinnav 密码：pwd123"
+
+msgid "If you forget the super administrator passwor:"
+msgstr "如果忘记超级管理员密码："
+
+msgid "reset password"
+msgstr "重置密码"
+
+msgid "If HTTPS is inaccessible:"
+msgstr "https无法访问："
+
+msgid "reset HTTP access"
+msgstr "重置http访问"
+
+msgid "jQuery.js failed to load!"
+msgstr "jQuery.js 加载失败！"
+
+msgid "Service Status"
+msgstr "服务状态"
+
+msgid "Status"
+msgstr "状态"
+
+msgid "ZdinNav is running"
+msgstr "运行中"
+
+msgid "ZdinNav is not running"
+msgstr "未运行"
+
+msgid "Open ZdinNav"
+msgstr "进入界面"
+
+msgid "Failed to read ZdinNav configuration data."
+msgstr "智淀导航配置数据读取失败。"
+
+msgid "Setup"
+msgstr "安装配置"
+
+msgid "The following parameters will only take effect during installation or upgrade."
+msgstr "以下参数只在安装或升级时才生效。"
+
+msgid "Port"
+msgstr "端口"
+
+msgid "Please enter the port number"
+msgstr "请输入端口号"
+
+msgid "The port number for accessing the ZdinNav after it starts."
+msgstr "ZdinNav 启动后用于访问的端口号。"
+
+msgid "Config path"
+msgstr "配置文件路径"
+
+msgid "Configuration file path for the ZdinNav program."
+msgstr "ZdinNav 程序配置文件路径"
+
+msgid "Enable Offline Installation"
+msgstr "离线安装"
+
+msgid "Offline installer available for local installation."
+msgstr "使用离线包，本地的安装。"
+
+msgid "Offline Installation Path"
+msgstr "离线安装说明"
+
+msgid "Offline Installation Description:%s"
+msgstr "推荐安装包类型：%s"
+ 
+msgid "Offline Installation Path Rules(Config path + %s):"
+msgstr "离线包上传路径(配置文件路径 + %s)："
+
+msgid "Offline Installation Path Verify"
+msgstr "离线包检查"
+
+msgid "Takes effect when the database is initially created, or when the /ZdinNav/ folder under the configuration file path does not contain any data."
+msgstr "数据库初始化创建时有效，或者配置文件路径下的/ZdinNav/文件夹不包含数据时生效。"
+
+msgid "Modifying errors may result in data loss or system failure to boot properly. Please proceed with caution!"
+msgstr "修改错误可能导致数据丢失或者系统无法正常启动，请谨慎操作！"
+
+msgid "Database Type"
+msgstr "数据类型"
+
+msgid "Warning: Do not modify if you are unfamiliar with the database, as it may result in system unavailability!"
+msgstr "对数据库不了解，不要轻易修改，否则无法正常访问系统！"
+
+msgid "Connection Settings"
+msgstr "数据库连接字符串"
+
+msgid "Administrator Account"
+msgstr "管理员账号"
+
+msgid "Please enter the administrator account"
+msgstr "请输入超级管理员账号"
+
+msgid "Password"
+msgstr "密码"
+
+msgid "Please enter the password"
+msgstr "请输入超级管理员密码"
+
+msgid "Unable to find the installation package. Please place the package in the following directory:%s(this path must not contain any other files)."
+msgstr "无法找到安装包，请将安装包放到：%s(该路径不能包含其他文件)。"
+
+msgid "We've found the installation package."
+msgstr "安装包已经找到了。"
+
+msgid "No corresponding validation %s type found."
+msgstr "找不到对应的%s校验类型。"
+
+msgid "Installation failed, unable to retrieve form data."
+msgstr "安装失败，无法获取表单数据。"
+
+msgid "Port cannot be empty."
+msgstr "端口不能为空。"
+
+msgid "Port format is incorrect."
+msgstr "端口格式不正确。"
+
+msgid "Configuration file path cannot be empty."
+msgstr "配置文件路径不能为空。"
+
+msgid "Data type cannot be empty."
+msgstr "数据类型不能为空。"
+
+msgid "Database connection string cannot be empty."
+msgstr "数据库连接字符串不能为空。"
+
+msgid "Administrator account cannot be empty."
+msgstr "管理员账号不能为空。"
+
+msgid "Account must be 2-20 characters, only letters and numbers are allowed."
+msgstr "账号2-20位，只能是字母、数字。"
+
+msgid "Password cannot be empty."
+msgstr "密码不能为空。"
+
+msgid "Password must be 6-12 characters, only letters, numbers, and symbols are allowed."
+msgstr "密码6到12位，只能是字母、数字、符号。"
+
+msgid "Reset only restores the page input data to its initial value and does not perform an automatic submission."
+msgstr "复位仅会将页面输入的数据恢复到初始值，但不会做自动提交操作。"
+
+msgid "Are you sure you want to reset the password to: pwd123?"
+msgstr "你确定重置密为：pwd123吗？"
+
+msgid "The password reset has failed."
+msgstr "密码重置失败。"
+
+msgid "Password reset successful."
+msgstr "密码已重置。"
+
+msgid "Are you sure you want to reset HTTP access?"
+msgstr "你确定重置http访问吗？"
+
+msgid "HTTP reset failed. Please restart your soft router and try again!"
+msgstr "http重置失败，请重启软路由后再试！"
+
+msgid "Switched to HTTP access."
+msgstr "已重置为http访问。"
+
+msgid "Please confirm before %s: Ensure the %s path has at least 300MB available space. Insufficient space may cause installation failure."
+msgstr "安装前请确认：%s路径建议保证有300M可用容量，可用容量过低可能导致安装失败！"
+
+msgid "installation"
+msgstr "安装"
+
+msgid "upgrading"
+msgstr "升级"
+
+msgid "Removing this program will uninstall: ZdinNav Docker and image files. User configuration data will be retained."
+msgstr "移除该程序，将会删除：智淀导航的docker程序和镜像文件，用户的配置数据将会保留。"
+
+msgid "✅ Completed"
+msgstr "✅ 执行完毕"
+
+msgid "❌ Failed"
+msgstr "❌ 执行失败"
+
+msgid "Upgrade"
+msgstr "升级"
