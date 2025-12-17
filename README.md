@@ -49,7 +49,7 @@ mkdir ./database
 mkdir ./logs
 
 # 2、文件添加777权限
-chmod 777 ./*
+chmod -R 777 ./*
 
 # 3、docker命令安装
 docker run -d \
@@ -67,7 +67,19 @@ docker run -d \
 
 使用 docker compose安装(推荐使用这个)：
 
-新建docker-compose.yaml文件，然后将下面的代码拷贝到该文件，在该文件下
+```
+数据持久化docker方式安装，必须在 zdinnav 路径下执行
+# 1、创建文件夹
+mkdir ./configuration
+mkdir ./database  
+mkdir ./logs
+
+# 2、文件添加777权限
+chmod -R 777 ./*
+
+```
+
+3、新建docker-compose.yaml文件，然后将下面的代码拷贝到该文件，在该文件下
 
 执行命令：`docker-compose up -d`
 
