@@ -20,7 +20,12 @@
 | [阿里云盘](https://www.alipan.com/s/5N7LrH7i1jQ) 提取码：rt20  网盘限制分享，只能压缩exe上传，下载后直接点击exe即可解压为docker安装包 |
 | [百度网盘](https://pan.baidu.com/s/19q8KaSAfJ0zYQey5CGXnLQ?pwd=jw3z) 提取码：jw3z |
 
+| 智淀导航(ZdinNav) 视频教程地址： |
+| ------------------------------------------------------------ |
+| [哔哩哔哩视频](https://www.bilibili.com/list/309910878/?sid=5054762&bvid=BV1EzqSB8Eck) |
+
 效果图：
+
 | 电脑端显示效果： |
 | --------------- |
 | <img src="preview%20image/pc登录预览.png" alt="pc登录预览" style="max-width:1000px;" /> |
