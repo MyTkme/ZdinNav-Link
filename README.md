@@ -11,7 +11,7 @@
 
 程序首次启动需耐心等待20-30秒(以免无法访问)，后访问网站。
 
-更新日志：[查看](https://github.com/MyTkme/ZdinNav-Link/blob/main/%E6%9B%B4%E6%96%B0%E6%97%A5%E5%BF%97.txt) 
+更新日志(1.1.2之前版本不要下载，证书过期，已经无法使用)：[查看](https://github.com/MyTkme/ZdinNav-Link/blob/main/%E6%9B%B4%E6%96%B0%E6%97%A5%E5%BF%97.txt) 
 
 | 智淀导航(ZdinNav) 获取地址： |
 | ------------------------------------------------------------ |
@@ -45,7 +45,7 @@
 
 ```
 这个方式最简单，但是不推荐(数据没有持久化)
-docker run -d --name zdinnav -p 9200:9200 tkme/zdinnav:1.1.0
+docker run -d --name zdinnav -p 9200:9200 tkme/zdinnav:1.2.0
 
 数据持久化docker方式安装，必须在 zdinnav 路径下执行
 # 1、创建文件夹
@@ -65,7 +65,7 @@ docker run -d \
   -v "$(pwd)/configuration:/app/configuration" \
   -v "$(pwd)/database:/app/database" \
   -v "$(pwd)/logs:/app/Logs" \
-  tkme/zdinnav:1.1.0
+  tkme/zdinnav:1.2.0
 ```
 
 
@@ -91,7 +91,7 @@ chmod -R 777 ./*
 ```
 services:
   zdinnav:
-    image: tkme/zdinnav:1.1.0
+    image: tkme/zdinnav:1.2.0
     container_name: zdinnav
     restart: unless-stopped
     ports:
@@ -119,11 +119,11 @@ docker-compose.yaml文件已经放到：docker-compose下面了。
 
 
 
-如果无法访问hub.docker，可以下载离线安装包(下面使用zdinnav_linux-amd64-1.1.0.tar示例，离线安装包文件格式：zdinnav_版本号)：
+如果无法访问hub.docker，可以下载离线安装包(下面使用zdinnav_linux-amd64-1.2.0.tar示例，离线安装包文件格式：zdinnav_版本号)：
 
-执行命令(在tar文件路径下执行)：`docker load -i ./zdinnav_linux-amd64-1.1.0.tar`
+执行命令(在tar文件路径下执行)：`docker load -i ./zdinnav_linux-amd64-1.2.0.tar`
 
-然后执行：上面的安装命令，命令里面出现的 1.1.0(版本号)改成(tar的版本号)：linux-amd64-1.1.0 执行命令即可。
+然后执行：上面的安装命令，命令里面出现的 1.2.0(版本号)改成(tar的版本号)：linux-amd64-1.2.0 执行命令即可。
 
 
 
