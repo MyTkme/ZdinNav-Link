@@ -8,7 +8,7 @@
 
 services:
   zdinnav:
-    image: tkme/zdinnav:1.1.0
+    image: tkme/zdinnav:1.2.0
     container_name: zdinnav
     restart: unless-stopped
     ports:
